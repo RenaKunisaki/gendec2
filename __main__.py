@@ -1,0 +1,51 @@
+#!/usr/bin/env python
+# eg: ./__main__.py --dir=../sfadebug/ --lines=1,4 src/main/objects.c build/GSAP01-DEBUG/src/main/objects.o
+
+# BUG: extra spaces are being added to string constants
+# (maybe only when they start with spaces?)
+
+import os
+import sys
+import math
+
+import shutil
+import tempfile
+import subprocess
+from os import PathLike
+import re
+import argparse
+from app import App
+
+argParser = argparse.ArgumentParser()
+argParser.add_argument("srcPath")
+argParser.add_argument("tgtPath")
+argParser.add_argument("--dir", help="Working directory")
+argParser.add_argument(
+    "--lines", help="Range of lines to mutate "
+        "(separated by comma eg: 1,4)"
+)
+
+def main():
+    args = argParser.parse_args()
+    if "dir" in args:
+        os.chdir(args.dir)
+    if "lines" in args:
+        global gPermuteLineRange
+        lines = args.lines.split(",", maxsplit=1)
+        if len(lines) < 2:
+            print("Invalid line range")
+            return
+        try:
+            gPermuteLineRange = (int(lines[0]), int(lines[1]))
+        except ValueError:
+            print("Invalid line numbers")
+            return
+        if gPermuteLineRange[0] >= gPermuteLineRange[1]:
+            print("Invalid line range")
+            return
+
+    app = App()
+    app.run(args.srcPath, args.tgtPath)
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,42 @@
+# misc/temp files
+**/~*
+*.log
+*.state
+*.tmp
+*.lock*
+**/__pycache__/*
+**/.vscode/*
+**/.cache/*
+*.d
+*.code-workspace
+bin/*
+build/*
+etc/*
+venv/*
+.flake8
+
+# from https://github.com/github/gitignore
+# Object files
+*.o
+*.ko
+*.elf
+
+# Libraries
+*.lib
+*.a
+*.la
+*.lo
+
+# Shared objects (inc. Windows DLLs)
+*.dll
+*.so
+*.so.*
+*.dylib
+
+# Executables
+*.exe
+*.out
+*.app
+*.i*86
+*.x86_64
+*.hex
