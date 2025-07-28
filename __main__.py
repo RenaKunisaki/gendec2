@@ -3,11 +3,9 @@
 
 # BUG: extra spaces are being added to string constants
 # (maybe only when they start with spaces?)
-
 import os
 import sys
 import math
-
 import shutil
 import tempfile
 import subprocess
@@ -22,7 +20,7 @@ argParser.add_argument("tgtPath")
 argParser.add_argument("--dir", help="Working directory")
 argParser.add_argument(
     "--lines", help="Range of lines to mutate "
-        "(separated by comma eg: 1,4)"
+    "(separated by comma eg: 1,4)"
 )
 
 def main():
