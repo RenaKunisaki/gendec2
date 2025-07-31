@@ -7,7 +7,8 @@ import tempfile
 import subprocess
 from parser import Parser, Token, TokenType
 from MutatorCollection import MutatorCollection
-from config import cflags
+from config import cflags, buildPreprocessCommand, \
+    buildCompileCommand, buildScoreCommand
 
 Infinity = float("inf")
 
@@ -55,9 +56,19 @@ class App:
         self.parser = Parser()
         self.mutator = MutatorCollection()
 
+    def setPermuteLineRange(self, lFirst:int, lLast:int) -> None:
+        """Set the line range to modify."""
+        if lFirst >= lLast or lFirst < 1 or lLast < 1:
+            raise ValueError("Invalid line range")
+        self.permuteLineRange = [lFirst, lLast]
+
     def run(self, sourceFilePath:PathLike,
     targetObjPath:PathLike) -> None:
-        """Run the app."""
+        """Run the app.
+
+        :param sourceFilePath: Path to source file to modify.
+        :param targetObjPath: Path to object file to try to match.
+        """
         self.sourceFilePath = Path(sourceFilePath)
         self.targetObjPath = Path(targetObjPath)
         try:
@@ -68,36 +79,36 @@ class App:
 
     def _mainLoop(self):
         """Main genetic algorithm loop."""
-        population = self.generateInitialPopulation()
         self.bestSolution = None
-        generation = 0
+        self.bestSource = self.originalSource
+        population = self.generateInitialPopulation()
+        generationNum = 0
         bestScore = Infinity
-        gBestSource = gOriginalSource
 
         while True:
-            generation += 1
+            generationNum += 1
 
             # calculate fitness for each member
-            print(f"Gen {generation:5d} ", end="")
+            print(f"Gen {generationNum:5d} ", end="")
             selected, scores = self.select(population)
 
             # show the result
             score = scores[id(selected[0])]
             if score < bestScore:
                 bestScore = score
-                gBestSource = selected[0]
+                self.bestSource = selected[0]
                 with open("best.c", "wt") as file:
                     file.write(self.parser.toString(selected[0]))
             print(
-                f"score {score:7d} ({score-initialScore:5d}) "
+                f"score {score:7d} ({score-self.initialScore:5d}) "
                 f"best {bestScore:7d} "
-                f"({bestScore-initialScore:5d})"
+                f"({bestScore-self.initialScore:5d})"
             )
 
             # create next generation by combining best performers
             population = []
-            population.append(gOriginalSource)  # prevent getting worse
-            population.append(gBestSource)
+            population.append(self.originalSource)  # prevent getting worse
+            population.append(self.bestSource)
             limit = len(selected) * 20
             i     = 0
             while (limit > 0 and i+1 < len(selected)
@@ -116,11 +127,12 @@ class App:
 
             # add additional new members
             while len(population) < self.populationSize:
-                child = self.mutate(gOriginalSource)
+                child = self.mutate(self.originalSource)
                 if child: population.append(child)
 
     def begin(self) -> None:
         """Prepare source files."""
+        # move the original file to a safe backup.
         self.origSourcePath = Path(str(self.sourceFilePath) + ".gendec-orig.c")
         shutil.move(self.sourceFilePath, self.origSourcePath)
 
@@ -141,15 +153,7 @@ class App:
         Returns preprocessed source.
         """
         tmp = tempfile.NamedTemporaryFile()
-        cmd = [
-            "./build/tools/wibo",
-            "build/compilers/GC/1.0/mwcceppc.exe",
-            *self.cflags,
-            "-EP",  # preprocess and strip out #line directives
-            "-o",
-            tmp.name,
-            srcPath,
-        ]
+        cmd = buildPreprocessCommand(self.cflags, srcPath, tmp.name)
         # print(' '.join(cmd))
         result = subprocess.run(cmd, capture_output=True)
         # print(result.stdout.decode('utf-8'))
@@ -171,16 +175,7 @@ class App:
         tmpIn.write(bytes(src, "utf-8"))
 
         tmpOut = tempfile.NamedTemporaryFile(suffix=".o")
-        cmd = [
-            "./build/tools/wibo",
-            "build/compilers/GC/1.0/mwcceppc.exe",
-            *self.cflags,
-            "-c",  # compile only, do not link
-            "-o",
-            tmpOut.name,
-            tmpIn.name,
-        ]
-        # print(' '.join(cmd))
+        cmd = buildCompileCommand(self.cflags, tmpIn.name, tmpOut.name)
         try:
             result = subprocess.run(cmd, capture_output=True, check=False)
         except subprocess.CalledProcessError:
@@ -202,6 +197,7 @@ class App:
         with open(self.sourceFilePath, "w") as f:
             f.write(code)
 
+        # display diff
         #print('\x1B[2J', end='') # clear screen
         #subprocess.call(['diff', '-y', '--suppress-common-lines',
         #    origSourcePath, sourceFilePath])
@@ -212,14 +208,7 @@ class App:
             return Infinity  # compile failed
 
         # Compare the generated binary with the target binary
-        cmd = [
-            "../objdiff/target/release/objdiff-cli",
-            "diff",
-            "-1", self.targetObjPath,
-            "-2", objFile.name,
-            "-o", "-",
-        ]
-        #print(' '.join(cmd))
+        cmd = buildScoreCommand(self.targetObjPath, objFile.name)
         result = subprocess.run(cmd, capture_output=True, check=False)
         if result.returncode != 0:
             raise RuntimeError("Scoring failed: " +
@@ -281,44 +270,41 @@ class App:
 
     def generateInitialPopulation(self):
         """Generate initial population."""
-        global gOriginalSource
-
         population = []
-        gOriginalSource = None
+        self.originalSource = None
         code = ''
         with open(self.origSourcePath, "r") as file:
             code = file.read()
-            gOriginalSource = self.tokenize(code)
-            assert len(gOriginalSource) > 1
+            self.originalSource = self.tokenize(code)
+            assert len(self.originalSource) > 1
             # keep the original code as one member
-            population.append(gOriginalSource)
+            population.append(self.originalSource)
 
         # sanity check
-        #if parser.toString(gOriginalSource) != code:
+        #if parser.toString(self.originalSource) != code:
         #    with open('fail.c', 'w') as file:
-        #        file.write(parser.toString(gOriginalSource))
+        #        file.write(parser.toString(self.originalSource))
         #    raise RuntimeError("Parser bug")
 
-        assert len(gOriginalSource) > 1
-        objFile, stdout, stderr = self.compileObj(gOriginalSource)
+        assert len(self.originalSource) > 1
+        objFile, stdout, stderr = self.compileObj(self.originalSource)
         if objFile is None:
             print("Initial compile failed")
             print(stdout)
             print(stderr)
             raise RuntimeError("Initial compile failed")
 
-        assert len(gOriginalSource) > 1
-        global initialScore
+        assert len(self.originalSource) > 1
 
-        initialScore = self.fitness(gOriginalSource)
-        assert len(gOriginalSource) > 1
-        if math.isinf(initialScore):
+        self.initialScore = self.fitness(self.originalSource)
+        assert len(self.originalSource) > 1
+        if math.isinf(self.initialScore):
             raise RuntimeError("Initial score failed")
-        print("Original score:", initialScore)
+        print("Original score:", self.initialScore)
 
         for i in range(self.populationSize - 1):
-            assert len(gOriginalSource) > 1
-            code = self.mutate(gOriginalSource)
+            assert len(self.originalSource) > 1
+            code = self.mutate(self.originalSource)
             assert len(code) > 1
             population.append(code)
             print("Generating %d/%d   " % (i + 1,

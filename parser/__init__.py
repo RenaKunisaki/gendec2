@@ -8,8 +8,17 @@ re_lineBreak = re.compile('\n')
 re_space = re.compile(r'(\s+)')
 
 class Token:
-    """One token in a source code."""
+    """One token in a source code.
+
+    This is used as a replacement for sctokenizer.token
+    in order to handle whitespace and comments.
+    """
     def __init__(self, token:Token | ScToken | str):
+        """Instantiate Token.
+
+        :param token: A token to copy from, or a string to
+        use as a temporary token value.
+        """
         # note, line and column are 1-indexed
         if type(token) is str:
             self._value  = token
@@ -174,7 +183,8 @@ class Parser:
 
         Note the first line is numbered 0.
         """
-        self._lineStarts = [0] + [m.start()+1 for m in re_lineBreak.finditer(code)]
+        self._lineStarts = [0] + [m.start()+1 for m
+            in re_lineBreak.finditer(code)]
         self._lineStarts.append(len(code))
 
     def _getTokenStartIdx(self, token:Token) -> int:

@@ -48,3 +48,36 @@ cflags = [
     f"build/{version}/include",
     f"-DVERSION={version_num}",
 ]
+
+def buildPreprocessCommand(cflags:list[str],
+inPath:str, outPath:str):
+    return [
+        "./build/tools/wibo",
+        "build/compilers/GC/1.0/mwcceppc.exe",
+        *cflags,
+        "-EP",  # preprocess and strip out #line directives
+        "-o",
+        outPath,
+        inPath,
+    ]
+
+def buildCompileCommand(cflags:list[str],
+inPath:str, outPath:str):
+    return [
+        "./build/tools/wibo",
+        "build/compilers/GC/1.0/mwcceppc.exe",
+        *cflags,
+        "-c",  # compile only, do not link
+        "-o",
+        outPath,
+        inPath,
+    ]
+
+def buildScoreCommand(origPath:str, newPath:str):
+    return [
+        "../objdiff/target/release/objdiff-cli",
+        "diff",
+        "-1", origPath,
+        "-2", newPath,
+        "-o", "-",
+    ]

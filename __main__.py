@@ -24,25 +24,21 @@ argParser.add_argument(
 )
 
 def main():
+    app = App()
     args = argParser.parse_args()
     if "dir" in args:
         os.chdir(args.dir)
     if "lines" in args:
-        global gPermuteLineRange
         lines = args.lines.split(",", maxsplit=1)
-        if len(lines) < 2:
+        if len(lines) != 2:
             print("Invalid line range")
             return
         try:
-            gPermuteLineRange = (int(lines[0]), int(lines[1]))
+            app.setPermuteLineRange(int(lines[0]), int(lines[1]))
         except ValueError:
             print("Invalid line numbers")
             return
-        if gPermuteLineRange[0] >= gPermuteLineRange[1]:
-            print("Invalid line range")
-            return
 
-    app = App()
     app.run(args.srcPath, args.tgtPath)
 
 if __name__ == "__main__":
