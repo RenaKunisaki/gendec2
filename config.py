@@ -49,6 +49,7 @@ cflags = [
     f"-DVERSION={version_num}",
 ]
 
+# Not currently used.
 def buildPreprocessCommand(cflags:list[str],
 inPath:str, outPath:str):
     return [
