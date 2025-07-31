@@ -7,5 +7,6 @@ class AddKeyword(Mutator):
 
     def mutate(self, code:list[Token]) -> list[Token]:
         pos = random.randint(0, len(code)-1)
-        code.insert(pos, Token(random.choice(self.collection._keywords)))
+        code.insert(pos, Token(random.choice(
+            self.collection._keywords)))
         return code
