@@ -26,9 +26,9 @@ argParser.add_argument(
 def main():
     app = App()
     args = argParser.parse_args()
-    if "dir" in args:
+    if "dir" in args and args.dir is not None:
         os.chdir(args.dir)
-    if "lines" in args:
+    if "lines" in args and args.lines is not None:
         lines = args.lines.split(",", maxsplit=1)
         if len(lines) != 2:
             print("Invalid line range")
