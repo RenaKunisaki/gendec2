@@ -4,13 +4,6 @@
 # BUG: extra spaces are being added to string constants
 # (maybe only when they start with spaces?)
 import os
-import sys
-import math
-import shutil
-import tempfile
-import subprocess
-from os import PathLike
-import re
 import argparse
 from app import App
 
@@ -22,6 +15,7 @@ argParser.add_argument(
     "--lines", help="Range of lines to mutate "
     "(separated by comma eg: 1,4)"
 )
+
 
 def main():
     app = App()
@@ -40,6 +34,7 @@ def main():
             return
 
     app.run(args.srcPath, args.tgtPath)
+
 
 if __name__ == "__main__":
     main()
